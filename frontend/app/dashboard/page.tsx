@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 
+import { API_BASE_URL } from "../api";
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Insight {
@@ -52,7 +54,9 @@ function dayKey(dateStr: string): string {
 }
 
 /** Group insights by calendar day, sorted newest-first */
-function groupByDay(insights: Insight[]): { label: string; key: string; items: Insight[] }[] {
+function groupByDay(
+  insights: Insight[],
+): { label: string; key: string; items: Insight[] }[] {
   const map = new Map<string, Insight[]>();
   for (const ins of insights) {
     const key = ins.scraped_at ? dayKey(ins.scraped_at) : "unknown";
@@ -63,7 +67,8 @@ function groupByDay(insights: Insight[]): { label: string; key: string; items: I
     .sort(([a], [b]) => b.localeCompare(a)) // newest day first
     .map(([key, items]) => ({
       key,
-      label: key === "unknown" ? "Unknown date" : dayLabel(items[0].scraped_at!),
+      label:
+        key === "unknown" ? "Unknown date" : dayLabel(items[0].scraped_at!),
       items,
     }));
 }
@@ -77,12 +82,16 @@ function InsightCard({ insight }: { insight: Insight }) {
         <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20">
           <Lightbulb className="h-4 w-4 text-indigo-400" />
         </div>
-        <p className="font-semibold leading-snug text-white">{insight.insight}</p>
+        <p className="font-semibold leading-snug text-white">
+          {insight.insight}
+        </p>
       </div>
 
       <div className="flex items-start gap-3 pl-10">
         <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-        <p className="text-sm leading-relaxed text-slate-400">{insight.action_to_take}</p>
+        <p className="text-sm leading-relaxed text-slate-400">
+          {insight.action_to_take}
+        </p>
       </div>
 
       <div className="flex items-center gap-2 pl-10">
@@ -118,11 +127,15 @@ function DayDivider({ label }: { label: string }) {
 
 export default function DashboardPage() {
   const [url, setUrl] = useState("");
-  const [refineStatus, setRefineStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [refineStatus, setRefineStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [refineError, setRefineError] = useState<string | null>(null);
 
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [insightsStatus, setInsightsStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [insightsStatus, setInsightsStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
   const [insightsError, setInsightsError] = useState<string | null>(null);
 
   // Date filter state — "all" or a YYYY-MM-DD string
@@ -133,7 +146,7 @@ export default function DashboardPage() {
     setInsightsStatus("loading");
     setInsightsError(null);
     try {
-      const res = await fetch("http://localhost:8080/insights");
+      const res = await fetch(`${API_BASE_URL}/insights`);
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);
       const data: Insight[] = await res.json();
       // Sort newest scraped_at first
@@ -141,12 +154,16 @@ export default function DashboardPage() {
         if (!a.scraped_at && !b.scraped_at) return 0;
         if (!a.scraped_at) return 1;
         if (!b.scraped_at) return -1;
-        return new Date(b.scraped_at).getTime() - new Date(a.scraped_at).getTime();
+        return (
+          new Date(b.scraped_at).getTime() - new Date(a.scraped_at).getTime()
+        );
       });
       setInsights(data);
       setInsightsStatus("idle");
     } catch (err) {
-      setInsightsError(err instanceof Error ? err.message : "Failed to fetch insights.");
+      setInsightsError(
+        err instanceof Error ? err.message : "Failed to fetch insights.",
+      );
       setInsightsStatus("error");
     }
   }, []);
@@ -163,7 +180,7 @@ export default function DashboardPage() {
     setRefineStatus("loading");
     setRefineError(null);
     try {
-      const res = await fetch("http://localhost:8080/upload-substack", {
+      const res = await fetch(`${API_BASE_URL}/insights`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
@@ -173,7 +190,9 @@ export default function DashboardPage() {
       setUrl("");
       setTimeout(fetchInsights, 800);
     } catch (err) {
-      setRefineError(err instanceof Error ? err.message : "Something went wrong.");
+      setRefineError(
+        err instanceof Error ? err.message : "Something went wrong.",
+      );
       setRefineStatus("error");
     }
   };
@@ -182,7 +201,9 @@ export default function DashboardPage() {
 
   /** All unique days available for the filter dropdown */
   const availableDays = useMemo(() => {
-    const keys = new Set(insights.map((i) => (i.scraped_at ? dayKey(i.scraped_at) : "unknown")));
+    const keys = new Set(
+      insights.map((i) => (i.scraped_at ? dayKey(i.scraped_at) : "unknown")),
+    );
     return Array.from(keys).sort((a, b) => b.localeCompare(a));
   }, [insights]);
 
@@ -190,7 +211,9 @@ export default function DashboardPage() {
   const filtered = useMemo(() => {
     if (selectedDay === "all") return insights;
     return insights.filter((i) =>
-      i.scraped_at ? dayKey(i.scraped_at) === selectedDay : selectedDay === "unknown"
+      i.scraped_at
+        ? dayKey(i.scraped_at) === selectedDay
+        : selectedDay === "unknown",
     );
   }, [insights, selectedDay]);
 
@@ -201,11 +224,14 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] px-4 py-12 text-white">
       <div className="mx-auto max-w-5xl space-y-12">
-
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-white">Daily Bytes</h1>
-          <p className="text-sm text-slate-500">Turn Substack articles into actionable insights.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            Daily Bytes
+          </h1>
+          <p className="text-sm text-slate-500">
+            Turn Substack articles into actionable insights.
+          </p>
         </div>
 
         {/* ── URL Input ──────────────────────────────────────────────────── */}
@@ -213,7 +239,10 @@ export default function DashboardPage() {
           <h2 className="mb-4 text-sm font-medium uppercase tracking-widest text-slate-400">
             Refine an Article
           </h2>
-          <form onSubmit={handleRefine} className="flex flex-col gap-3 sm:flex-row">
+          <form
+            onSubmit={handleRefine}
+            className="flex flex-col gap-3 sm:flex-row"
+          >
             <div className="relative flex-1">
               <Link2 className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
@@ -222,7 +251,8 @@ export default function DashboardPage() {
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
-                  if (refineStatus === "error" || refineStatus === "success") setRefineStatus("idle");
+                  if (refineStatus === "error" || refineStatus === "success")
+                    setRefineStatus("idle");
                 }}
                 required
                 className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-600 outline-none ring-0 transition focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/30"
@@ -272,7 +302,14 @@ export default function DashboardPage() {
                     <option value="all">All dates</option>
                     {availableDays.map((d) => (
                       <option key={d} value={d}>
-                        {d === "unknown" ? "Unknown date" : dayLabel(insights.find((i) => i.scraped_at && dayKey(i.scraped_at) === d)?.scraped_at ?? d)}
+                        {d === "unknown"
+                          ? "Unknown date"
+                          : dayLabel(
+                              insights.find(
+                                (i) =>
+                                  i.scraped_at && dayKey(i.scraped_at) === d,
+                              )?.scraped_at ?? d,
+                            )}
                       </option>
                     ))}
                   </select>
@@ -306,7 +343,10 @@ export default function DashboardPage() {
           {insightsStatus === "loading" && insights.length === 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/5" />
+                <div
+                  key={i}
+                  className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/5"
+                />
               ))}
             </div>
           )}
@@ -329,20 +369,29 @@ export default function DashboardPage() {
           {insightsStatus === "idle" && insights.length === 0 && (
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-16 text-center">
               <Lightbulb className="h-8 w-8 text-slate-600" />
-              <p className="text-sm text-slate-500">No insights yet. Submit an article above to get started.</p>
+              <p className="text-sm text-slate-500">
+                No insights yet. Submit an article above to get started.
+              </p>
             </div>
           )}
 
           {/* No results for selected filter */}
-          {insightsStatus === "idle" && insights.length > 0 && filtered.length === 0 && (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-12 text-center">
-              <CalendarDays className="h-8 w-8 text-slate-600" />
-              <p className="text-sm text-slate-500">No insights for this date.</p>
-              <button onClick={() => setSelectedDay("all")} className="text-xs text-indigo-400 hover:underline">
-                Clear filter
-              </button>
-            </div>
-          )}
+          {insightsStatus === "idle" &&
+            insights.length > 0 &&
+            filtered.length === 0 && (
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-12 text-center">
+                <CalendarDays className="h-8 w-8 text-slate-600" />
+                <p className="text-sm text-slate-500">
+                  No insights for this date.
+                </p>
+                <button
+                  onClick={() => setSelectedDay("all")}
+                  className="text-xs text-indigo-400 hover:underline"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
 
           {/* Grouped insights */}
           {groups.length > 0 && (
